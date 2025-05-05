@@ -1,6 +1,13 @@
+import { useAtom } from 'jotai';
+import Dashboard from './dashboard/Dashboard';
+import { userAtom } from '@/atoms';
+
 function Home() {
+
   return (
-    <div className="w-screen h-screen">
+    <div>
+      {/* <Main /> */}
+      <Dashboard />
     </div>
   )
 }

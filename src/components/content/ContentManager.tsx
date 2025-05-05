@@ -37,11 +37,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Plus, Edit, Trash2, Filter, ArrowUpDown } from "lucide-react";
+import CreateContentDialog from './CreateContentDialog';
+import { truncateAddress } from '@/utils/truncateAddress';
+import dayjs from 'dayjs';
 
 interface ContentItem {
   id: string;
   title: string;
   type: string;
+  content: string;
+  imageUrl: string;
   status: "published" | "draft" | "archived";
   author: string;
   createdAt: string;
@@ -51,56 +56,65 @@ interface ContentItem {
 const ContentManager = ({
   userAddress = "0x1234...5678",
   userRole = "admin",
+  data = [],
+  loading = false,
+  searchQuery = "",
+  setSearchQuery,
 }: {
   userAddress?: string;
   userRole?: string;
+  data?: any[];
+  loading?: boolean;
+  searchQuery?: string;
+  setSearchQuery?: (query: string) => void;
 }) => {
   const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Mock content data
-  const contentItems: ContentItem[] = [
-    {
-      id: "1",
-      title: "Getting Started with Web3",
-      type: "article",
-      status: "published",
-      author: "0x1234...5678",
-      createdAt: "2023-06-15",
-      updatedAt: "2023-06-16",
-    },
-    {
-      id: "2",
-      title: "Understanding Smart Contracts",
-      type: "tutorial",
-      status: "draft",
-      author: "0x1234...5678",
-      createdAt: "2023-06-18",
-      updatedAt: "2023-06-18",
-    },
-    {
-      id: "3",
-      title: "Blockchain Security Best Practices",
-      type: "guide",
-      status: "published",
-      author: "0x9876...4321",
-      createdAt: "2023-06-10",
-      updatedAt: "2023-06-14",
-    },
-    {
-      id: "4",
-      title: "NFT Marketplace Overview",
-      type: "article",
-      status: "archived",
-      author: "0x1234...5678",
-      createdAt: "2023-05-20",
-      updatedAt: "2023-06-01",
-    },
-  ];
+  // const contentItems: ContentItem[] = [
+  //   {
+  //     id: "1",
+  //     title: "Getting Started with Web3",
+  //     type: "article",
+  //     status: "published",
+  //     author: "0x1234...5678",
+  //     createdAt: "2023-06-15",
+  //     updatedAt: "2023-06-16",
+  //   },
+  //   {
+  //     id: "2",
+  //     title: "Understanding Smart Contracts",
+  //     type: "tutorial",
+  //     status: "draft",
+  //     author: "0x1234...5678",
+  //     createdAt: "2023-06-18",
+  //     updatedAt: "2023-06-18",
+  //   },
+  //   {
+  //     id: "3",
+  //     title: "Blockchain Security Best Practices",
+  //     type: "guide",
+  //     status: "published",
+  //     author: "0x9876...4321",
+  //     createdAt: "2023-06-10",
+  //     updatedAt: "2023-06-14",
+  //   },
+  //   {
+  //     id: "4",
+  //     title: "NFT Marketplace Overview",
+  //     type: "article",
+  //     status: "archived",
+  //     author: "0x1234...5678",
+  //     createdAt: "2023-05-20",
+  //     updatedAt: "2023-06-01",
+  //   },
+  // ];
+
+  const contentItems = data;
 
   const filteredItems = contentItems.filter((item) => {
     // Filter by tab
@@ -140,7 +154,7 @@ const ContentManager = ({
   };
 
   return (
-    <div className="w-full h-full bg-background p-6">
+    <div>
       <Card className="w-full">
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -175,9 +189,9 @@ const ContentManager = ({
           >
             <TabsList className="mb-4">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="published">Published</TabsTrigger>
-              <TabsTrigger value="draft">Drafts</TabsTrigger>
-              <TabsTrigger value="archived">Archived</TabsTrigger>
+              <TabsTrigger disabled value="published">Published</TabsTrigger>
+              <TabsTrigger disabled value="draft">Drafts</TabsTrigger>
+              <TabsTrigger disabled value="archived">Archived</TabsTrigger>
             </TabsList>
             <TabsContent value={activeTab}>
               <div className="rounded-md border">
@@ -185,10 +199,7 @@ const ContentManager = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[300px]">
-                        <div className="flex items-center">
-                          Title
-                          <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </div>
+                        Title
                       </TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
@@ -198,7 +209,11 @@ const ContentManager = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredItems.length > 0 ? (
+                    {loading ? <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          Loading...
+                        </TableCell>
+                      </TableRow> : <>{filteredItems.length > 0 ? (
                       filteredItems.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">
@@ -207,9 +222,9 @@ const ContentManager = ({
                           <TableCell>{item.type}</TableCell>
                           <TableCell>{getStatusBadge(item.status)}</TableCell>
                           <TableCell className="text-sm">
-                            {item.author === userAddress ? "You" : item.author}
+                            {item.author === userAddress ? "You" : truncateAddress(item.author)}
                           </TableCell>
-                          <TableCell>{item.updatedAt}</TableCell>
+                          <TableCell>{dayjs.unix(item.updatedAt).format('DD/MM/YYYY')}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button
@@ -244,7 +259,7 @@ const ContentManager = ({
                           No content found.
                         </TableCell>
                       </TableRow>
-                    )}
+                    )}</>}
                   </TableBody>
                 </Table>
               </div>
@@ -256,7 +271,7 @@ const ContentManager = ({
             Showing {filteredItems.length} of {contentItems.length} items
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button disabled variant="outline" size="sm">
               <Filter className="mr-2 h-4 w-4" /> Filter
             </Button>
             <Select defaultValue="10">
@@ -275,74 +290,7 @@ const ContentManager = ({
       </Card>
 
       {/* Create Content Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Create New Content</DialogTitle>
-            <DialogDescription>
-              Add a new content item to your CMS. Fill out the form below to
-              create content.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label htmlFor="title" className="text-sm font-medium">
-                Title
-              </label>
-              <Input id="title" placeholder="Enter content title" />
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="type" className="text-sm font-medium">
-                Content Type
-              </label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="article">Article</SelectItem>
-                  <SelectItem value="tutorial">Tutorial</SelectItem>
-                  <SelectItem value="guide">Guide</SelectItem>
-                  <SelectItem value="news">News</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="content" className="text-sm font-medium">
-                Content
-              </label>
-              <Textarea
-                id="content"
-                placeholder="Write your content here..."
-                className="min-h-[200px]"
-              />
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="status" className="text-sm font-medium">
-                Status
-              </label>
-              <Select defaultValue="draft">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button>Create Content</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateContentDialog isCreateDialogOpen={isCreateDialogOpen} setIsCreateDialogOpen={setIsCreateDialogOpen} />
 
       {/* Edit Content Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -362,6 +310,12 @@ const ContentManager = ({
                 <Input id="edit-title" defaultValue={selectedItem.title} />
               </div>
               <div className="grid gap-2">
+                <label htmlFor="title" className="text-sm font-medium">
+                  Image
+                </label>
+                <Input id="image" placeholder="Enter image URL" defaultValue={selectedItem.imageUrl} />
+              </div>
+              <div className="grid gap-2">
                 <label htmlFor="edit-type" className="text-sm font-medium">
                   Content Type
                 </label>
@@ -370,10 +324,10 @@ const ContentManager = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="article">Article</SelectItem>
-                    <SelectItem value="tutorial">Tutorial</SelectItem>
-                    <SelectItem value="guide">Guide</SelectItem>
-                    <SelectItem value="news">News</SelectItem>
+                    <SelectItem value="Article">Article</SelectItem>
+                    <SelectItem value="Tutorial">Tutorial</SelectItem>
+                    <SelectItem value="Guide">Guide</SelectItem>
+                    <SelectItem value="News">News</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -384,7 +338,8 @@ const ContentManager = ({
                 <Textarea
                   id="edit-content"
                   placeholder="Content goes here..."
-                  className="min-h-[200px]"
+                  className="min-h-[150px]"
+                  defaultValue={selectedItem.content}
                 />
               </div>
               <div className="grid gap-2">
@@ -396,9 +351,9 @@ const ContentManager = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
+                    <SelectItem value="Published">Published</SelectItem>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

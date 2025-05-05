@@ -1,4 +1,7 @@
-import React from "react";
+import dayjs from 'dayjs';
+import { algoliasearch } from 'algoliasearch';
+import Avvvatars from 'avvvatars-react'
+import { isEmpty, isString } from 'underscore';
 import {
   Card,
   CardContent,
@@ -20,27 +23,93 @@ import {
   Home,
   Users,
   LayoutDashboard,
+  Wallet,
 } from "lucide-react";
 import ContentManager from "../content/ContentManager";
+import {useAtom} from 'jotai';
+import {userAtom} from '@/atoms';
+import { useAccount } from '@/hooks/useAccount';
+import CreateContentDialog from '@/components/content/CreateContentDialog';
+import {useEffect, useState} from 'react';
+import { truncateAddress } from '@/utils/truncateAddress';
+import {algoliaClient} from '@/constants/index';
 
 interface DashboardProps {
-  walletAddress?: string;
   ensName?: string;
   connectionStatus?: "connected" | "disconnected" | "connecting";
-  onDisconnect?: () => void;
   onToggleTheme?: () => void;
   isDarkMode?: boolean;
 }
 
+const processRecords = async () => {
+  const newTime = dayjs().unix();
+  const movies = [{
+  "title": "Getting Started with Web3",
+  "type": "Article",
+  "status": "Published",
+  "author": "0x03e78ac0b21e17087d0c6659c9ba852a7d9e370d",
+  "imageUrl": "https://images.vexels.com/media/users/3/144131/isolated/preview/29576a7e0442960346703d3ecd6bac04-picture-doodle-icon.png",
+  "createdAt": newTime,
+  "updatedAt": newTime,
+}];
+  return await algoliaClient.saveObjects({
+    indexName: 'content_index',
+    objects: movies,
+  });
+};
+
+const demo = () => {
+  processRecords()
+    .then(() => console.log('Successfully indexed objects!'))
+    .catch((err) => console.error(err));
+};
+
 const Dashboard = ({
-  walletAddress = "0x1234...5678",
-  ensName = "user.eth",
+  ensName = "",
   connectionStatus = "connected",
-  onDisconnect = () => {},
   onToggleTheme = () => {},
   isDarkMode = false,
 }: DashboardProps) => {
-  const [activeTab, setActiveTab] = React.useState("dashboard");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { connectedAddress = '', login, logout } = useAccount();
+
+  const formattedAddress = truncateAddress(connectedAddress);
+  const hasConnectedAddress = !isEmpty(connectedAddress) && isString(connectedAddress) && !connectedAddress?.toLowerCase()?.includes('error');
+  console.log('connectedAddress', connectedAddress)
+
+  const onDisconnect = () => {
+    logout();
+  };
+
+  const fetchData = async (value?: string) => {
+    try {
+      setLoading(true);
+      const response = await algoliaClient.search({
+    requests: [{ indexName: 'content_index', hitsPerPage: 50 }],
+    });
+    setData((response.results[0] as any).hits);
+    }
+    catch (error) {
+      console.error('Error fetching data:', error);
+    }
+    finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (hasConnectedAddress && activeTab === "content") {
+      fetchData();
+    }
+    else {
+      setData([]);
+    }
+  }, [hasConnectedAddress, activeTab]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -71,6 +140,7 @@ const Dashboard = ({
           <Button
             variant={activeTab === "users" ? "default" : "ghost"}
             className="justify-start"
+            disabled
             onClick={() => setActiveTab("users")}
           >
             <Users className="mr-2 h-4 w-4" />
@@ -86,22 +156,23 @@ const Dashboard = ({
           </Button>
         </div>
 
-        <div className="mt-auto">
+        {hasConnectedAddress && <div className="mt-auto">
           <Separator className="my-4" />
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <Avatar>
+              {/* <Avatar>
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${walletAddress}`}
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${connectedAddress}`}
                 />
                 <AvatarFallback>WA</AvatarFallback>
-              </Avatar>
+              </Avatar> */}
+              <Avvvatars style="shape" value={connectedAddress || ''} radius={10} />
               <div className="overflow-hidden">
                 <p className="text-sm font-medium truncate">
                   {ensName || "User"}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {walletAddress}
+                  {formattedAddress}
                 </p>
               </div>
             </div>
@@ -110,6 +181,7 @@ const Dashboard = ({
                 variant="outline"
                 size="sm"
                 className="w-full"
+                disabled
                 onClick={onToggleTheme}
               >
                 {isDarkMode ? (
@@ -128,11 +200,11 @@ const Dashboard = ({
               </Button>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {hasConnectedAddress ? <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         <header className="md:hidden border-b p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -166,7 +238,7 @@ const Dashboard = ({
               <p className="text-muted-foreground">
                 {connectionStatus === "connected" && (
                   <span className="flex items-center gap-2">
-                    Connected as {ensName || walletAddress}
+                    Connected as {ensName || formattedAddress}
                     <Badge
                       variant="outline"
                       className="ml-2 bg-green-500/10 text-green-500 border-green-500/20"
@@ -215,7 +287,7 @@ const Dashboard = ({
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Address:</span>
-                      <span className="font-mono">{walletAddress}</span>
+                      <span className="font-mono">{formattedAddress}</span>
                     </div>
                     {ensName && (
                       <div className="flex justify-between">
@@ -284,15 +356,16 @@ const Dashboard = ({
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col gap-2">
-                    <Button variant="outline" className="justify-start">
+                    <Button variant="outline" className="justify-start" onClick={() => setIsCreateDialogOpen(true)}>
                       <FileText className="mr-2 h-4 w-4" />
                       Create New Content
                     </Button>
-                    <Button variant="outline" className="justify-start">
+      <CreateContentDialog isCreateDialogOpen={isCreateDialogOpen} setIsCreateDialogOpen={setIsCreateDialogOpen} />
+                    <Button disabled onClick={() => setActiveTab("users")} variant="outline" className="justify-start">
                       <Users className="mr-2 h-4 w-4" />
                       Manage Users
                     </Button>
-                    <Button variant="outline" className="justify-start">
+                    <Button onClick={() => setActiveTab("settings")} variant="outline" className="justify-start">
                       <Settings className="mr-2 h-4 w-4" />
                       Configure Settings
                     </Button>
@@ -303,7 +376,7 @@ const Dashboard = ({
           )}
 
           {/* Content Tab */}
-          {activeTab === "content" && <ContentManager />}
+          {activeTab === "content" && <ContentManager userAddress={connectedAddress} data={data} loading={loading} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
 
           {/* Users Tab */}
           {activeTab === "users" && (
@@ -338,7 +411,7 @@ const Dashboard = ({
                         Toggle between light and dark mode
                       </p>
                     </div>
-                    <Button variant="outline" onClick={onToggleTheme}>
+                    <Button disabled variant="outline" onClick={onToggleTheme}>
                       {isDarkMode ? (
                         <Sun className="h-4 w-4 mr-2" />
                       ) : (
@@ -365,7 +438,12 @@ const Dashboard = ({
             </Card>
           )}
         </main>
-      </div>
+      </div> : <div className="p-4 flex-1 w-full h-full flex justify-center items-center">
+        <Button variant="outline" onClick={login}>
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Connect wallet
+                    </Button>
+                    </div>}
     </div>
   );
 };
