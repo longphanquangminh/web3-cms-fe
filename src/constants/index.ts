@@ -1,11 +1,15 @@
+import { Permit } from 'permitio';
 import { IAdapter, WEB3AUTH_NETWORK, getEvmChainConfig } from '@web3auth/base';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
 import { Web3Auth, Web3AuthOptions } from '@web3auth/modal';
 import { getDefaultExternalAdapters } from '@web3auth/default-evm-adapter';
 import { algoliasearch } from 'algoliasearch';
 
+const ALGOLIA_APPLICATION_ID = import.meta.env.VITE_ALGOLIA_APPLICATION_ID;
+const ALGOLIA_API_KEY = import.meta.env.VITE_ALGOLIA_API_KEY;
+
 // IMP START - Dashboard Registration
-const clientId = 'BPi5PB_UiIZ-cPz1GtV5i1I2iOSOHuimiXBI0e-Oe_u6X3oVAbCiAZOTEBtTXw4tsluTITPqA8zMsfxIKMjiqNQ'; // get from https://dashboard.web3auth.io
+const clientId = import.meta.env.VITE_WEB3_AUTH_CLIENT_ID; // get from https://dashboard.web3auth.io
 const chainId = 0xaa36a7; // Sepolia testnet
 // IMP END - Dashboard Registration
 
@@ -35,4 +39,4 @@ adapters.forEach((adapter: IAdapter<unknown>) => {
 });
 // IMP END - Configuring External Wallets
 
-export const algoliaClient = algoliasearch('7YIXP6UJE4', 'd996dc6831a6c5b37d19240a77d6f135');
+export const algoliaClient = algoliasearch(ALGOLIA_APPLICATION_ID, ALGOLIA_API_KEY);

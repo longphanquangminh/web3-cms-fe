@@ -315,9 +315,36 @@ const Dashboard = ({
 
               <Card>
                 <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                  <CardDescription>
+                    Common tasks you can perform
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-2">
+                    <Button variant="outline" className="justify-start" onClick={() => setIsCreateDialogOpen(true)}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Create New Content
+                    </Button>
+      <CreateContentDialog isCreateDialogOpen={isCreateDialogOpen} setIsCreateDialogOpen={setIsCreateDialogOpen} />
+                    <Button disabled onClick={() => setActiveTab("users")} variant="outline" className="justify-start">
+                      <Users className="mr-2 h-4 w-4" />
+                      Manage Users
+                    </Button>
+                    <Button onClick={() => setActiveTab("settings")} variant="outline" className="justify-start">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configure Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="relative overflow-hidden">
+                <div className="bg-black text-white absolute right-[-50px] w-[200px] flex justify-center items-center top-6 px-3 py-1 rotate-[35deg] z-10 text-sm">Coming soon ✨</div>
+                <Card className="opacity-50 h-full">
+                <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
                   <CardDescription>
-                    Your recent actions in the CMS
+                    Your recent actions in the CMS (example)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -345,33 +372,8 @@ const Dashboard = ({
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+              </Card></div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>
-                    Common tasks you can perform
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" className="justify-start" onClick={() => setIsCreateDialogOpen(true)}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Create New Content
-                    </Button>
-      <CreateContentDialog isCreateDialogOpen={isCreateDialogOpen} setIsCreateDialogOpen={setIsCreateDialogOpen} />
-                    <Button disabled onClick={() => setActiveTab("users")} variant="outline" className="justify-start">
-                      <Users className="mr-2 h-4 w-4" />
-                      Manage Users
-                    </Button>
-                    <Button onClick={() => setActiveTab("settings")} variant="outline" className="justify-start">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Configure Settings
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
 
